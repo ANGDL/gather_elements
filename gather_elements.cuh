@@ -11,7 +11,7 @@
 void gather_elements(
         const void* const* input,
         void** output,
-        unsigned int axis,
+        unsigned long axis,
         unsigned int in_c, unsigned int in_h, unsigned int in_w,
         unsigned int idx_c, unsigned int idx_h, unsigned int idx_w,
         cudaStream_t stream=0);

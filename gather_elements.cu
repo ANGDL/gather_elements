@@ -26,7 +26,7 @@ dim3 cuda_gridsize(unsigned int n, unsigned int blocks) {
 
 __global__
 void gather_elements_kernel(
-        const float* input, const size_t* index, float* output, const unsigned int axis,
+        const float* input, const unsigned long* index, float* output, const unsigned int axis,
         unsigned int in_c, unsigned int in_h, unsigned int in_w,
         unsigned int idx_c, unsigned int idx_h, unsigned int idx_w){
 
@@ -44,13 +44,13 @@ void gather_elements_kernel(
     unsigned int in_idx;
 
     if (0 == axis) {
-        in_idx = index[out_idx] * idx_h * idx_w + j * idx_w + k;
+        in_idx = index[out_idx] * in_h * in_w + j * in_w + k;
     }
     else if (1 == axis) {
-        in_idx = i * idx_h * idx_w + index[out_idx] * idx_w + k;
+        in_idx = i * in_h * in_w + index[out_idx] * in_w + k;
     }
     else{
-        in_idx = i * idx_h * idx_w + j * idx_w + index[out_idx];
+        in_idx = i * in_h * in_w + j * in_w + index[out_idx];
     }
 
 //    assert(out_idx < in_c * in_h * in_w);
@@ -66,7 +66,7 @@ void gather_elements_kernel(
 void gather_elements(
         const void* const* input,
         void** output,
-        unsigned int axis,
+        unsigned long axis,
         unsigned int in_c, unsigned int in_h, unsigned int in_w,
         unsigned int idx_c, unsigned int idx_h, unsigned int idx_w,
         cudaStream_t stream){
@@ -78,7 +78,7 @@ void gather_elements(
         blocks = data_size;
     }
     gather_elements_kernel<<<cuda_gridsize(data_size, blocks), blocks, 0, stream>>>(
-            (float*)input[0], (size_t*)input[1], (float*)output[0], axis,
+            (float*)input[0], (unsigned long*)input[1], (float*)output[0], axis,
             in_c, in_h, in_w, idx_c, idx_h, idx_w);
 
     cudaDeviceSynchronize();
