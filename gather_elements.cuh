@@ -8,12 +8,24 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+    if (code != cudaSuccess)
+    {
+        fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+        if (abort) exit(code);
+    }
+}
+
 void gather_elements(
         const void* const* input,
         void** output,
-        unsigned long axis,
-        unsigned int in_c, unsigned int in_h, unsigned int in_w,
-        unsigned int idx_c, unsigned int idx_h, unsigned int idx_w,
-        cudaStream_t stream=0);
+        unsigned int axis,
+        int n_dim,
+        const unsigned int* tensor_dims,
+        const unsigned int* index_dims,
+        unsigned int* workspace,
+        cudaStream_t stream);
 
 #endif //GATHER_ELEMENTS_GATHER_ELEMENTS_CUH

@@ -96,16 +96,16 @@ int main() {
 
     cudaSetDevice(0);
 
-    torch::Tensor b = torch::rand({2, 50, 50}).cuda();
-    torch::Tensor index = torch::tensor({0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0}).reshape({1, 2, -1}).to(torch::kInt64).cuda();
+    torch::Tensor b = torch::rand({2, 10, 10}, {torch::kFloat32}).cuda();
+    torch::Tensor index = torch::tensor({0, 1, 1, 0, 2, 1, 3, 2}).reshape({ 1, 2, -1}).to(torch::kInt64).cuda();
 //    torch::Tensor index = torch::randint_like(b, 0, 1).to(torch::kInt64).cuda();
 
-    torch::Tensor index32 = torch::tensor({0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0}).reshape({1, 2, -1}).to(torch::kInt32).cuda();
+    torch::Tensor index32 = torch::tensor({0, 1, 1, 0, 2, 1, 3, 2}, {torch::kInt32}).reshape({1, 2, -1}).cuda();
 
     torch::Tensor output = torch::zeros_like(index).to(torch::kFloat32).cuda();
-    torch::Tensor trt_output = torch::zeros_like(index).to(torch::kFloat32).cuda();
+    torch::Tensor trt_output = torch::zeros_like(index32).to(torch::kFloat32).cuda();
 
-    auto inputs = std::vector<void*>({b.data_ptr(), index.data_ptr()});
+    auto inputs = std::vector<void*>({b.data_ptr(), index32.data_ptr()});
     auto outputs = std::vector<void*>({output.data_ptr()});
 
     auto trt_bindings = std::vector<void*>({b.data_ptr(), index32.data_ptr(), trt_output.data_ptr()});
@@ -117,27 +117,42 @@ int main() {
 
     assert(engine->getNbBindings() == 3);
 
+    unsigned int* workspace = nullptr;
+    size_t workspace_size = sizeof(unsigned int) * (index.dim() * 4 + index.dim() * index.element_size());
+    gpuErrchk(cudaMalloc(&workspace, workspace_size));
 
-    for(int i = 0; i != 3; ++i){
+    std::vector<unsigned int> tensor_dims{b.sizes().begin(), b.sizes().end()};
+    std::vector<unsigned int> index_dims{index32.sizes().begin(), index32.sizes().end()};
+
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
+
+    for(int i = 0; i != 1; ++i){
         auto res = torch::gather(b, 1, index);
 
         gather_elements(
-                inputs.data(), outputs.data(), 1,
-                b.size(0), b.size(1), b.size(2),
-                index.size(0), index.size(1), index.size(2));
+                inputs.data(), outputs.data(), 1, index32.dim(),
+                tensor_dims.data(), index_dims.data(),
+                workspace, stream);
 
         trt_context->executeV2(trt_bindings.data());
 
         std::cout << (res - output).sum() << "\n " << (res - trt_output).sum() << std::endl;
 
+        std::cout << "b ========" << std::endl;
+        std::cout << b << std::endl;
+
         std::cout << "res ========" << std::endl;
         std::cout << res << std::endl;
-//        std::cout << "cuda output ========" << std::endl;
-//        std::cout << output << std::endl;
+        std::cout << "cuda output ========" << std::endl;
+        std::cout << output << std::endl;
         std::cout << "trt output ========" << std::endl;
         std::cout << trt_output << std::endl;
 
     }
+
+    cudaFree(workspace);
+    cudaStreamDestroy(stream);
 
     return 0;
 }
