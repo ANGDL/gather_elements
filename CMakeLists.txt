@@ -11,7 +11,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-write-strings")
 
 set(CUDA_PATH "/usr/local/cuda")
 set(TORCH_LIB_PATH "/home/ang/miniconda3/envs/ml/lib/python3.6/site-packages/torch/lib")
-set(TRT_PATH "/home/ang/TensorRT-7.0.0.11")
+set(TRT_PATH "/home/ang/TensorRT-7.2.1.6")
 
 include_directories(
         .
